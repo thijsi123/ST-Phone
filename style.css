@@ -655,8 +655,7 @@
 
 @media (max-width: 640px) {
     #st-phone-window {
-        /* Fullscreen-ish overlay, always fully on-screen. JS never applies
-           saved desktop positions at this width - inset wins. */
+        /* Fullscreen-ish overlay, always fully on-screen on small screens. */
         inset: 8px !important;
         width: auto;
         height: auto;
@@ -664,9 +663,7 @@
     }
 
     #st-phone-launcher {
-        /* Bottom-center, above the chat input. JS clears any saved desktop
-           position at this width, so these defaults actually apply; a drag
-           still works (inline styles win) but is session-only on mobile. */
+        /* CSS fallback before JS applies the saved/clamped position. */
         left: 50%;
         right: auto;
         top: auto;
@@ -679,8 +676,7 @@
     }
 
     #st-phone-launcher[style*="left"] {
-        /* Inline position present (mid-drag): drop the centering transform
-           so the button tracks the finger 1:1. */
+        /* Inline position present: drop centering transform. */
         transform: none;
     }
 }

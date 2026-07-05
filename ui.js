@@ -20,14 +20,9 @@ let activeMenuMessageId = null;
 let activePickerMessageId = null;
 
 // -------------------- POSITION PERSISTENCE --------------------
-// Positions live only in chat_metadata.st_phone.ui (same storage every other
-// phone/settings state already uses, so it syncs across every device that
-// opens this chat). No localStorage: it's per-browser and would never sync
-// between a desktop browser and a phone browser in the first place.
-//
-// Writes go through flushSaveState() (immediate, not saveState()'s debounce)
-// because a mobile browser can suspend a backgrounded tab within a second,
-// silently dropping a debounced write that hasn't fired yet.
+// Positions live in extension_settings.st_phone (settings.json). This is the
+// right place for device/UI preferences and does not need the ST-Memory plugin.
+// Writes go through saveSettings() immediately in settings.js.
 
 export function isMobileViewport() {
     return window.matchMedia?.('(max-width: 640px)').matches ?? window.innerWidth <= 640;
@@ -44,6 +39,18 @@ export function clampToViewport(position, element) {
     };
 }
 
+export function defaultLauncherPosition(element) {
+    const rect = element?.getBoundingClientRect?.();
+    const width = Math.max(rect?.width || 88, isMobileViewport() ? 88 : 58);
+    const height = Math.max(rect?.height || 46, 46);
+    return isMobileViewport()
+        ? {
+            x: Math.max(4, Math.round((window.innerWidth - width) / 2)),
+            y: Math.max(4, Math.round((window.innerHeight - height) / 2)),
+        }
+        : null;
+}
+
 export function applyElementPosition(element, position) {
     if (!element) return;
     const clamped = clampToViewport(position, element);
@@ -52,12 +59,14 @@ export function applyElementPosition(element, position) {
         element.style.top = '';
         element.style.right = '';
         element.style.bottom = '';
+        element.style.transform = '';
         return null;
     }
     element.style.left = `${clamped.x}px`;
     element.style.top = `${clamped.y}px`;
     element.style.right = 'auto';
     element.style.bottom = 'auto';
+    element.style.transform = 'none';
     return clamped;
 }
 
@@ -65,20 +74,11 @@ export function applyLauncherPosition() {
     const launcher = document.getElementById('st-phone-launcher');
     if (!launcher) return;
 
-    // Small screens ignore saved positions entirely: a position dragged on a
-    // desktop monitor is meaningless on a 380px phone and lands off-screen.
-    // The mobile media query in style.css pins the button somewhere safe.
-    if (isMobileViewport()) {
-        applyElementPosition(launcher, null);
-        return;
-    }
-
-    // No saved position yet: leave inline styles empty so the stylesheet's
-    // default placement applies. A position is only persisted once the user
-    // actually drags the button (or types coordinates in Settings).
-    const pos = getLauncherPosition();
+    // Mobile gets a centered first-run position. Desktop keeps the CSS
+    // default until the user drags or types coordinates.
+    const pos = getLauncherPosition() || defaultLauncherPosition(launcher);
     const clamped = applyElementPosition(launcher, pos);
-    if (clamped && (clamped.x !== pos.x || clamped.y !== pos.y)) {
+    if (clamped && pos && (clamped.x !== pos.x || clamped.y !== pos.y)) {
         saveLauncherPosition(clamped);
     }
 }
@@ -260,7 +260,7 @@ export function buildUi() {
                         <textarea data-setting-text="customReasoningPairs" rows="4" placeholder="&lt;analysis&gt; =&gt; &lt;/analysis&gt;"></textarea>
                     </label>
                     <div class="st-phone-setting st-phone-setting-stack">
-                        <div><strong>Positions (desktop)</strong><span>Pixel coordinates for the button and phone window. Ignored on small screens, where both are placed automatically. Blank = automatic.</span></div>
+                        <div><strong>Positions</strong><span>Pixel coordinates for the button and phone window. Values are clamped to the visible screen. Blank = automatic.</span></div>
                         <div class="st-phone-pos-grid">
                             <label>Button X <input type="number" min="0" step="1" data-pos="launcher-x"></label>
                             <label>Button Y <input type="number" min="0" step="1" data-pos="launcher-y"></label>
@@ -459,9 +459,7 @@ export function bindUi() {
         const rect = launcher.getBoundingClientRect();
         launcherDragState = { moved: wasMoved };
         launcher.classList.remove('st-phone-launcher-dragging');
-        // Mobile drags are session-only: never let a small-screen drag
-        // overwrite the desktop position stored in settings.json.
-        if (wasMoved && !isMobileViewport()) {
+        if (wasMoved) {
             saveLauncherPosition({ x: rect.left, y: rect.top });
             refreshPositionInputs();
         }
@@ -591,13 +589,17 @@ export function bindUi() {
             const pair = readPositionPair(win, prefix);
             if (pair) {
                 if (prefix === 'launcher') {
-                    saveLauncherPosition(pair);
+                    const clamped = clampToViewport(pair, launcher) || pair;
+                    saveLauncherPosition(clamped);
                     applyLauncherPosition();
+                    refreshPositionInputs();
                 } else {
-                    saveWindowPosition(pair);
+                    const clamped = clampToViewport(pair, win) || pair;
+                    saveWindowPosition(clamped);
                     if (!isMobileViewport() && win.classList.contains('st-phone-visible')) {
-                        applyElementPosition(win, pair);
+                        applyElementPosition(win, clamped);
                     }
+                    refreshPositionInputs();
                 }
             }
         }

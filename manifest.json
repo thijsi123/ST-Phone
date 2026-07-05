@@ -1,11 +1,11 @@
 {
-  "name": "ST-Phone",
-  "display_name": "ST Phone",
-  "version": "0.1.2",
-  "author": "local",
-  "description": "Physical phone widget for SillyTavern with RPGraph-style message threads.",
-  "js": "index.js",
-  "css": "style.css",
-  "type": "module",
-  "generate_interceptor": "stPhoneMemoryInterceptor"
+    "name": "ST-Phone",
+    "display_name": "ST Phone",
+    "version": "0.1.0",
+    "author": "local",
+    "description": "Physical phone widget for SillyTavern with RPGraph-style message threads.",
+    "js": "index.js",
+    "css": "style.css",
+    "type": "module",
+    "generate_interceptor": "stPhoneMemoryInterceptor"
 }
