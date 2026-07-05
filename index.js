@@ -42,6 +42,7 @@ const defaultSettings = Object.freeze({
 let state = null;
 let initialized = false;
 let dragState = null;
+let launcherDragState = null;
 let activeMenuMessageId = null;
 let activePickerMessageId = null;
 
@@ -172,6 +173,9 @@ function ensureState() {
     bucket.ui.selectedThreadKey = bucket.ui.selectedThreadKey || bucket.ui.selectedContact || '';
     bucket.ui.position = bucket.ui.position && typeof bucket.ui.position === 'object'
         ? bucket.ui.position
+        : { x: null, y: null };
+    bucket.ui.launcherPosition = bucket.ui.launcherPosition && typeof bucket.ui.launcherPosition === 'object'
+        ? bucket.ui.launcherPosition
         : { x: null, y: null };
     migrateThreadShape(bucket);
     state = bucket;
@@ -855,7 +859,7 @@ function buildUi() {
     launcher.id = 'st-phone-launcher';
     launcher.type = 'button';
     launcher.title = 'Open ST Phone';
-    launcher.innerHTML = '<span>Phone</span><span class="st-phone-launcher-badge"></span>';
+    launcher.innerHTML = '<span class="st-phone-launcher-label">Phone</span><span class="st-phone-launcher-badge"></span>';
     document.body.append(launcher);
 
     bindUi();
@@ -863,8 +867,13 @@ function buildUi() {
 
 function showWindow(open = true) {
     const win = document.getElementById('st-phone-window');
+    const launcher = document.getElementById('st-phone-launcher');
     if (!win) return;
     win.classList.toggle('st-phone-visible', open);
+    launcher?.classList.toggle('st-phone-launcher-open', open);
+    const label = launcher?.querySelector('.st-phone-launcher-label');
+    if (label) label.textContent = open ? 'Close' : 'Phone';
+    if (launcher) launcher.title = open ? 'Close ST Phone' : 'Open ST Phone';
     if (open) {
         const pos = ensureState().ui.position;
         if (Number.isFinite(pos?.x) && Number.isFinite(pos?.y)) {
@@ -974,7 +983,50 @@ function bindUi() {
     const win = document.getElementById('st-phone-window');
     const launcher = document.getElementById('st-phone-launcher');
 
-    launcher.addEventListener('click', () => showWindow(!win.classList.contains('st-phone-visible')));
+    launcher.addEventListener('click', () => {
+        if (launcherDragState?.moved) return;
+        showWindow(!win.classList.contains('st-phone-visible'));
+    });
+    launcher.addEventListener('pointerdown', (event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        const rect = launcher.getBoundingClientRect();
+        launcherDragState = {
+            offsetX: event.clientX - rect.left,
+            offsetY: event.clientY - rect.top,
+            startX: event.clientX,
+            startY: event.clientY,
+            moved: false,
+        };
+        launcher.classList.add('st-phone-launcher-dragging');
+        launcher.setPointerCapture(event.pointerId);
+    });
+    launcher.addEventListener('pointermove', (event) => {
+        if (!launcherDragState) return;
+        const deltaX = Math.abs(event.clientX - launcherDragState.startX);
+        const deltaY = Math.abs(event.clientY - launcherDragState.startY);
+        if (deltaX > 4 || deltaY > 4) launcherDragState.moved = true;
+        const rect = launcher.getBoundingClientRect();
+        const nextX = Math.max(4, Math.min(window.innerWidth - Math.min(rect.width, 48), event.clientX - launcherDragState.offsetX));
+        const nextY = Math.max(4, Math.min(window.innerHeight - Math.min(rect.height, 44), event.clientY - launcherDragState.offsetY));
+        launcher.style.left = `${nextX}px`;
+        launcher.style.top = `${nextY}px`;
+        launcher.style.right = 'auto';
+        launcher.style.bottom = 'auto';
+    });
+    launcher.addEventListener('pointerup', () => {
+        if (!launcherDragState) return;
+        const wasMoved = launcherDragState.moved;
+        const rect = launcher.getBoundingClientRect();
+        launcherDragState = { moved: wasMoved };
+        launcher.classList.remove('st-phone-launcher-dragging');
+        ensureState().ui.launcherPosition = { x: rect.left, y: rect.top };
+        saveState();
+        setTimeout(() => { launcherDragState = null; }, 0);
+    });
+    launcher.addEventListener('pointercancel', () => {
+        launcherDragState = null;
+        launcher.classList.remove('st-phone-launcher-dragging');
+    });
     win.querySelector('.st-phone-close').addEventListener('click', () => showWindow(false));
     win.querySelector('.st-phone-unlock').addEventListener('click', () => setScreen('home'));
 
@@ -1477,6 +1529,34 @@ function renderContactButton(summary, active = false) {
     `;
 }
 
+function clampLauncherPosition(position) {
+    const launcher = document.getElementById('st-phone-launcher');
+    if (!launcher || !position || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return null;
+    const rect = launcher.getBoundingClientRect();
+    const width = Math.max(rect.width, 48);
+    const height = Math.max(rect.height, 44);
+    return {
+        x: Math.max(4, Math.min(window.innerWidth - width - 4, position.x)),
+        y: Math.max(4, Math.min(window.innerHeight - height - 4, position.y)),
+    };
+}
+
+function applyLauncherPosition() {
+    const launcher = document.getElementById('st-phone-launcher');
+    if (!launcher) return;
+    const bucket = ensureState();
+    const clamped = clampLauncherPosition(bucket.ui.launcherPosition);
+    if (!clamped) return;
+    launcher.style.left = `${clamped.x}px`;
+    launcher.style.top = `${clamped.y}px`;
+    launcher.style.right = 'auto';
+    launcher.style.bottom = 'auto';
+    if (clamped.x !== bucket.ui.launcherPosition.x || clamped.y !== bucket.ui.launcherPosition.y) {
+        bucket.ui.launcherPosition = clamped;
+        saveState();
+    }
+}
+
 function render() {
     const bucket = ensureState();
     const win = document.getElementById('st-phone-window');
@@ -1484,6 +1564,12 @@ function render() {
     if (!win || !launcher) return;
 
     launcher.style.display = bucket.settings.showLauncher ? 'grid' : 'none';
+    applyLauncherPosition();
+    const isOpen = win.classList.contains('st-phone-visible');
+    launcher.classList.toggle('st-phone-launcher-open', isOpen);
+    const launcherLabel = launcher.querySelector('.st-phone-launcher-label');
+    if (launcherLabel) launcherLabel.textContent = isOpen ? 'Close' : 'Phone';
+    launcher.title = isOpen ? 'Close ST Phone' : 'Open ST Phone';
 
     win.querySelectorAll('[data-screen], .st-phone-view').forEach((node) => node.classList.remove('active'));
     if (bucket.ui.screen === 'lock') {
@@ -1560,6 +1646,24 @@ function updateClock() {
     if (dateNode) dateNode.textContent = date;
 }
 
+function syncViewportPositions() {
+    applyLauncherPosition();
+    const win = document.getElementById('st-phone-window');
+    const bucket = ensureState();
+    const pos = bucket.ui.position;
+    if (!win || !Number.isFinite(pos?.x) || !Number.isFinite(pos?.y)) return;
+    const rect = win.getBoundingClientRect();
+    const nextX = Math.max(4, Math.min(window.innerWidth - Math.min(rect.width, 48), pos.x));
+    const nextY = Math.max(4, Math.min(window.innerHeight - 48, pos.y));
+    win.style.left = `${nextX}px`;
+    win.style.top = `${nextY}px`;
+    win.style.right = 'auto';
+    if (nextX !== pos.x || nextY !== pos.y) {
+        bucket.ui.position = { x: nextX, y: nextY };
+        saveState();
+    }
+}
+
 function init() {
     if (initialized) return;
     initialized = true;
@@ -1568,6 +1672,8 @@ function init() {
     setPrompt();
     render();
     setInterval(updateClock, 30000);
+    window.addEventListener('resize', syncViewportPositions, { passive: true });
+    window.addEventListener('orientationchange', syncViewportPositions, { passive: true });
     updateMemoryStatus();
     eventSource.on('st_memory_status', updateMemoryStatus);
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, handleRenderedMessage);
