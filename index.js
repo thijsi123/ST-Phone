@@ -877,9 +877,16 @@ function showWindow(open = true) {
     if (open) {
         const pos = ensureState().ui.position;
         if (Number.isFinite(pos?.x) && Number.isFinite(pos?.y)) {
-            win.style.left = `${pos.x}px`;
-            win.style.top = `${pos.y}px`;
+            const rect = win.getBoundingClientRect();
+            const nextX = Math.max(4, Math.min(window.innerWidth - Math.min(rect.width, 48), pos.x));
+            const nextY = Math.max(4, Math.min(window.innerHeight - 48, pos.y));
+            win.style.left = `${nextX}px`;
+            win.style.top = `${nextY}px`;
             win.style.right = 'auto';
+            if (nextX !== pos.x || nextY !== pos.y) {
+                ensureState().ui.position = { x: nextX, y: nextY };
+                saveState();
+            }
         }
         updateClock();
         render();
@@ -1545,6 +1552,18 @@ function applyLauncherPosition() {
     const launcher = document.getElementById('st-phone-launcher');
     if (!launcher) return;
     const bucket = ensureState();
+    if (!Number.isFinite(bucket.ui.launcherPosition?.x) || !Number.isFinite(bucket.ui.launcherPosition?.y)) {
+        if (window.matchMedia?.('(max-width: 640px)').matches) {
+            const rect = launcher.getBoundingClientRect();
+            bucket.ui.launcherPosition = {
+                x: Math.max(4, Math.round((window.innerWidth - Math.max(rect.width, 88)) / 2)),
+                y: Math.max(4, Math.round((window.innerHeight - Math.max(rect.height, 46)) / 2)),
+            };
+            saveState();
+        } else {
+            return;
+        }
+    }
     const clamped = clampLauncherPosition(bucket.ui.launcherPosition);
     if (!clamped) return;
     launcher.style.left = `${clamped.x}px`;
