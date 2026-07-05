@@ -1,0 +1,619 @@
+#st-phone-launcher {
+    position: fixed;
+    right: 18px;
+    bottom: 96px;
+    z-index: 2147483000;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 14px;
+    background: #15171d;
+    color: #f5f7fb;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+    cursor: pointer;
+}
+
+#st-phone-launcher .st-phone-launcher-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #ff4965;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+#st-phone-window {
+    position: fixed;
+    top: 76px;
+    right: 76px;
+    z-index: 2147483001;
+    width: 382px;
+    height: min(720px, calc(100vh - 92px));
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: 7px solid #08090c;
+    border-radius: 30px;
+    background: #10131a;
+    color: #eef2f7;
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.68), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+#st-phone-window.st-phone-visible {
+    display: flex;
+}
+
+#st-phone-window * {
+    box-sizing: border-box;
+}
+
+.st-phone-status {
+    flex: 0 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    background: #07080b;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+    font-weight: 750;
+    cursor: grab;
+    user-select: none;
+}
+
+.st-phone-status:active {
+    cursor: grabbing;
+}
+
+.st-phone-close {
+    border: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.86);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.st-phone-screen {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, rgba(24, 30, 44, 0.92), rgba(9, 11, 18, 0.98)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cpath d='M0 36h72M36 0v72' stroke='%23ffffff' stroke-opacity='.035'/%3E%3C/svg%3E");
+}
+
+.st-phone-lock {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+    padding: 28px;
+}
+
+.st-phone-lock.active {
+    display: flex;
+}
+
+.st-phone-lock-time {
+    font-size: 54px;
+    font-weight: 250;
+    line-height: 1;
+}
+
+.st-phone-lock-date {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 14px;
+}
+
+.st-phone-unlock {
+    margin-top: 18px;
+    min-width: 150px;
+    min-height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.st-phone-home {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.st-phone-app-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    align-content: start;
+    gap: 18px 12px;
+    padding: 26px 18px;
+    overflow-y: auto;
+}
+
+.st-phone-app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.st-phone-app-icon {
+    width: 54px;
+    height: 54px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.34);
+    font-size: 22px;
+}
+
+.st-phone-dock {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin: 14px;
+    padding: 13px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.13);
+}
+
+.st-phone-dock button {
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 13px;
+    background: rgba(0, 0, 0, 0.38);
+    color: #fff;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.st-phone-view {
+    flex: 1;
+    min-height: 0;
+    display: none;
+    flex-direction: column;
+    background: #111722;
+}
+
+.st-phone-view.active,
+.st-phone-home.active {
+    display: flex;
+}
+
+.st-phone-header {
+    flex: 0 0 54px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(12, 16, 24, 0.94);
+}
+
+.st-phone-back,
+.st-phone-header-action {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    cursor: pointer;
+}
+
+.st-phone-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    font-weight: 800;
+}
+
+.st-phone-contact-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.st-phone-contact {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 10px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    text-align: left;
+}
+
+.st-phone-contact:hover,
+.st-phone-contact.active {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.st-phone-avatar {
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    font-weight: 900;
+}
+
+.st-phone-contact-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.st-phone-contact-top,
+.st-phone-contact-bottom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.st-phone-contact-top strong,
+.st-phone-contact-bottom span:first-child {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.st-phone-contact-top small,
+.st-phone-contact-bottom {
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 12px;
+}
+
+.st-phone-unread {
+    min-width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #35d07f;
+    color: #06130b;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.st-phone-thread {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.st-phone-empty {
+    margin: auto;
+    color: rgba(255, 255, 255, 0.62);
+    text-align: center;
+}
+
+.st-phone-bubble {
+    max-width: 82%;
+    padding: 10px 12px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    line-height: 1.35;
+    word-break: break-word;
+    white-space: pre-wrap;
+    font-size: 14px;
+    position: relative;
+}
+
+.st-phone-bubble.incoming {
+    align-self: flex-start;
+    background: #edf1f7;
+    color: #0c1119;
+    border-bottom-left-radius: 5px;
+}
+
+.st-phone-bubble.outgoing {
+    align-self: flex-end;
+    background: #3fe087;
+    color: #06130b;
+    border-bottom-right-radius: 5px;
+}
+
+.st-phone-bubble small {
+    display: block;
+    margin-top: 5px;
+    opacity: 0.62;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.st-phone-bubble-menu-btn {
+    position: absolute;
+    top: 4px;
+    right: 5px;
+    width: 24px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.14);
+    color: currentColor;
+    cursor: pointer;
+    opacity: 0;
+}
+
+.st-phone-bubble:hover .st-phone-bubble-menu-btn,
+.st-phone-bubble-menu-btn:focus-visible {
+    opacity: 1;
+}
+
+.st-phone-bubble-flags {
+    display: block;
+    margin-top: 4px;
+    font-size: 10px;
+    opacity: 0.58;
+}
+
+.st-phone-composer {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(12, 16, 24, 0.96);
+}
+
+.st-phone-composer textarea {
+    flex: 1;
+    min-width: 0;
+    min-height: 42px;
+    max-height: 112px;
+    resize: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 17px;
+    background: rgba(255, 255, 255, 0.07);
+    color: #fff;
+    padding: 10px 13px;
+    outline: none;
+    line-height: 1.35;
+}
+
+.st-phone-composer button {
+    flex: 0 0 44px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: #3fe087;
+    color: #06130b;
+    cursor: pointer;
+    font-weight: 900;
+}
+
+.st-phone-settings {
+    padding: 14px;
+    display: grid;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.st-phone-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.st-phone-setting span {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 12px;
+}
+
+.st-phone-setting-stack {
+    align-items: stretch;
+    flex-direction: column;
+}
+
+.st-phone-setting-status {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: center;
+}
+
+.st-phone-setting select,
+.st-phone-setting input[type="number"] {
+    max-width: 142px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    background: #0b1018;
+    color: #fff;
+    padding: 7px 8px;
+}
+
+.st-phone-setting textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 86px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    background: #0b1018;
+    color: #fff;
+    padding: 8px;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.st-phone-menu {
+    position: absolute;
+    z-index: 20;
+    width: 176px;
+    display: none;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    background: rgba(13, 17, 25, 0.98);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+}
+
+.st-phone-menu.active {
+    display: grid;
+    gap: 2px;
+}
+
+.st-phone-menu button {
+    width: 100%;
+    min-height: 30px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    text-align: left;
+    cursor: pointer;
+    padding: 6px 8px;
+    font-size: 12px;
+}
+
+.st-phone-menu button:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.st-phone-menu hr {
+    width: 100%;
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 4px 0;
+}
+
+.st-phone-picker {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.48);
+}
+
+.st-phone-picker.active {
+    display: flex;
+}
+
+.st-phone-picker-card {
+    width: 100%;
+    max-height: 72%;
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 18px 18px 0 0;
+    background: #111722;
+    overflow: hidden;
+}
+
+.st-phone-picker-head,
+.st-phone-picker-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.st-phone-picker-head button {
+    margin-left: auto;
+}
+
+.st-phone-picker-list {
+    overflow-y: auto;
+    padding: 8px 12px;
+}
+
+.st-phone-picker-list label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 4px;
+}
+
+.st-phone-picker-actions {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 0;
+}
+
+.st-phone-picker-actions button,
+.st-phone-picker-head button {
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    cursor: pointer;
+    padding: 8px 10px;
+}
+
+@media (max-width: 640px) {
+    #st-phone-window {
+        inset: 8px;
+        width: auto;
+        height: auto;
+        border-radius: 24px;
+    }
+
+    #st-phone-launcher {
+        right: 12px;
+        bottom: 78px;
+    }
+}
