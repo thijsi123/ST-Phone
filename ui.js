@@ -6,7 +6,7 @@ import {
     ensureState, saveState, flushSaveState, getUserName,
     discoveredContacts, threadKey, getThreadMeta, getThread, selectedThreadKey,
     createGroupThread, threadSummaries, getWindowPosition, saveWindowPosition,
-    getLauncherPosition, saveLauncherPosition,
+    getLauncherPosition, saveLauncherPosition, resetPositions, defaultSettings,
 } from './settings.js';
 import {
     escapeHtml, normalizeName, namesMatch, contactColor, uniqueNames,
@@ -64,16 +64,53 @@ export function applyElementPosition(element, position) {
 export function applyLauncherPosition() {
     const launcher = document.getElementById('st-phone-launcher');
     if (!launcher) return;
-    const pos = getLauncherPosition();
+
+    // Small screens ignore saved positions entirely: a position dragged on a
+    // desktop monitor is meaningless on a 380px phone and lands off-screen.
+    // The mobile media query in style.css pins the button somewhere safe.
+    if (isMobileViewport()) {
+        applyElementPosition(launcher, null);
+        return;
+    }
 
     // No saved position yet: leave inline styles empty so the stylesheet's
-    // default placement applies (bottom-right corner; the mobile media query
-    // has its own safe placement). A position is only persisted once the
-    // user actually drags the button.
+    // default placement applies. A position is only persisted once the user
+    // actually drags the button (or types coordinates in Settings).
+    const pos = getLauncherPosition();
     const clamped = applyElementPosition(launcher, pos);
     if (clamped && (clamped.x !== pos.x || clamped.y !== pos.y)) {
         saveLauncherPosition(clamped);
     }
+}
+
+// Mirrors the stored positions into the Settings screen's X/Y inputs.
+// Skips whichever input is currently focused so typing isn't clobbered.
+export function refreshPositionInputs() {
+    const win = document.getElementById('st-phone-window');
+    if (!win) return;
+    const values = {
+        'launcher-x': getLauncherPosition()?.x,
+        'launcher-y': getLauncherPosition()?.y,
+        'window-x': getWindowPosition()?.x,
+        'window-y': getWindowPosition()?.y,
+    };
+    for (const [key, value] of Object.entries(values)) {
+        const input = win.querySelector(`[data-pos="${key}"]`);
+        if (input && document.activeElement !== input) {
+            input.value = Number.isFinite(value) ? String(Math.round(value)) : '';
+        }
+    }
+}
+
+// Reads a pair of X/Y inputs; returns a position only when both are filled
+// with numbers (blank fields must not silently become 0,0).
+function readPositionPair(win, prefix) {
+    const xRaw = String(win.querySelector(`[data-pos="${prefix}-x"]`)?.value ?? '').trim();
+    const yRaw = String(win.querySelector(`[data-pos="${prefix}-y"]`)?.value ?? '').trim();
+    if (!xRaw || !yRaw) return null;
+    const x = Number(xRaw);
+    const y = Number(yRaw);
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
 }
 
 export function updateMemoryStatus() {
@@ -222,6 +259,16 @@ export function buildUi() {
                         <div><strong>Custom reasoning pairs</strong><span>One per line: start =&gt; end</span></div>
                         <textarea data-setting-text="customReasoningPairs" rows="4" placeholder="&lt;analysis&gt; =&gt; &lt;/analysis&gt;"></textarea>
                     </label>
+                    <div class="st-phone-setting st-phone-setting-stack">
+                        <div><strong>Positions (desktop)</strong><span>Pixel coordinates for the button and phone window. Ignored on small screens, where both are placed automatically. Blank = automatic.</span></div>
+                        <div class="st-phone-pos-grid">
+                            <label>Button X <input type="number" min="0" step="1" data-pos="launcher-x"></label>
+                            <label>Button Y <input type="number" min="0" step="1" data-pos="launcher-y"></label>
+                            <label>Phone X <input type="number" min="0" step="1" data-pos="window-x"></label>
+                            <label>Phone Y <input type="number" min="0" step="1" data-pos="window-y"></label>
+                        </div>
+                        <button type="button" class="st-phone-pos-reset" data-action="reset-positions">Reset positions</button>
+                    </div>
                     <div class="st-phone-setting-status" data-role="memory-plugin-status">ST-Memory: checking...</div>
                 </div>
             </section>
@@ -263,10 +310,16 @@ export function showWindow(open = true) {
     if (label) label.textContent = open ? 'Close' : 'Phone';
     if (launcher) launcher.title = open ? 'Close ST Phone' : 'Open ST Phone';
     if (open) {
-        const clamped = applyElementPosition(win, getWindowPosition());
-        const pos = getWindowPosition();
-        if (clamped && pos && (clamped.x !== pos.x || clamped.y !== pos.y)) {
-            saveWindowPosition(clamped);
+        if (isMobileViewport()) {
+            // Fullscreen overlay via the CSS `inset: 8px` media query rule;
+            // never apply a desktop-saved position on a small screen.
+            applyElementPosition(win, null);
+        } else {
+            const clamped = applyElementPosition(win, getWindowPosition());
+            const pos = getWindowPosition();
+            if (clamped && pos && (clamped.x !== pos.x || clamped.y !== pos.y)) {
+                saveWindowPosition(clamped);
+            }
         }
         updateClock();
         render();
@@ -406,7 +459,12 @@ export function bindUi() {
         const rect = launcher.getBoundingClientRect();
         launcherDragState = { moved: wasMoved };
         launcher.classList.remove('st-phone-launcher-dragging');
-        if (wasMoved) saveLauncherPosition({ x: rect.left, y: rect.top });
+        // Mobile drags are session-only: never let a small-screen drag
+        // overwrite the desktop position stored in settings.json.
+        if (wasMoved && !isMobileViewport()) {
+            saveLauncherPosition({ x: rect.left, y: rect.top });
+            refreshPositionInputs();
+        }
         setTimeout(() => { launcherDragState = null; }, 0);
     });
     launcher.addEventListener('pointercancel', () => {
@@ -481,6 +539,14 @@ export function bindUi() {
             return;
         }
 
+        if (target.getAttribute('data-action') === 'reset-positions') {
+            resetPositions();
+            applyLauncherPosition();
+            if (!isMobileViewport()) applyElementPosition(win, null);
+            refreshPositionInputs();
+            return;
+        }
+
         const contact = target.getAttribute('data-contact');
         if (contact) openThread(contact);
     });
@@ -519,6 +585,22 @@ export function bindUi() {
             ensureState().settings[textSetting] = String(event.target.value || '');
             saveState();
         }
+        const posInput = event.target?.getAttribute?.('data-pos');
+        if (posInput) {
+            const prefix = posInput.startsWith('launcher') ? 'launcher' : 'window';
+            const pair = readPositionPair(win, prefix);
+            if (pair) {
+                if (prefix === 'launcher') {
+                    saveLauncherPosition(pair);
+                    applyLauncherPosition();
+                } else {
+                    saveWindowPosition(pair);
+                    if (!isMobileViewport() && win.classList.contains('st-phone-visible')) {
+                        applyElementPosition(win, pair);
+                    }
+                }
+            }
+        }
         if (event.target?.matches?.('[data-role="draft"]')) {
             event.target.style.height = '0px';
             event.target.style.height = `${Math.min(112, event.target.scrollHeight || 42)}px`;
@@ -531,6 +613,9 @@ export function bindUi() {
     const status = win.querySelector('.st-phone-status');
     status.addEventListener('pointerdown', (event) => {
         if (event.target.closest('button')) return;
+        // On mobile the phone is a fullscreen overlay - dragging it would
+        // only break the CSS inset placement.
+        if (isMobileViewport()) return;
         const rect = win.getBoundingClientRect();
         dragState = { x: event.clientX - rect.left, y: event.clientY - rect.top };
         status.setPointerCapture(event.pointerId);
@@ -550,7 +635,7 @@ export function bindUi() {
         dragState = null;
         const rect = win.getBoundingClientRect();
         saveWindowPosition({ x: rect.left, y: rect.top });
-        console.log('[ST-Phone] Phone window position saved:', rect.left, rect.top);
+        refreshPositionInputs();
     });
 }
 
@@ -705,6 +790,7 @@ export function render() {
             textarea.value = String(bucket.settings[key] || '');
         }
     }
+    refreshPositionInputs();
     updateClock();
 }
 
@@ -722,6 +808,12 @@ export function syncViewportPositions() {
     applyLauncherPosition();
     const win = document.getElementById('st-phone-window');
     if (!win || !win.classList.contains('st-phone-visible')) return;
+    if (isMobileViewport()) {
+        // e.g. desktop -> mobile orientation/resize: drop inline positioning
+        // so the fullscreen CSS rule takes over.
+        applyElementPosition(win, null);
+        return;
+    }
     const pos = getWindowPosition();
     const clamped = applyElementPosition(win, pos);
     if (clamped && pos && (clamped.x !== pos.x || clamped.y !== pos.y)) {

@@ -19,7 +19,7 @@ import { textgen_types, textgenerationwebui_settings } from '../../../textgen-se
 import { getStringHash } from '../../../utils.js';
 import {
     ensureState, saveState, getUserName, getPrimaryCharacterName, getThread, getThreadMeta,
-    threadKey, discoveredContacts, stripKnownReasoning, messageVisibleToNames,
+    threadKey, discoveredContacts, stripKnownReasoning, messageVisibleToNames, selectedThreadKey,
 } from './settings.js';
 import { nowId, uniqueNames, namesMatch, clampNumber } from './utils.js';
 // Circular import: ui.js also imports from phone.js. Safe here because

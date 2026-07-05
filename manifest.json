@@ -1,7 +1,7 @@
 {
   "name": "ST-Phone",
   "display_name": "ST Phone",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "local",
   "description": "Physical phone widget for SillyTavern with RPGraph-style message threads.",
   "js": "index.js",

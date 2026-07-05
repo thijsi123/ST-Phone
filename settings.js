@@ -16,7 +16,7 @@
 import { chat_metadata, saveSettings, saveSettingsDebounced } from '../../../../script.js';
 import { cancelDebouncedMetadataSave, extension_settings, getContext, saveMetadataDebounced } from '../../../extensions.js';
 import { saveMetadata } from '../../../../script.js';
-import { nowId, uniqueNames, namesMatch } from './utils.js';
+import { nowId, uniqueNames, namesMatch, compactPreview, formatTime, escapeRegExp } from './utils.js';
 
 export const METADATA_KEY = 'st_phone';
 export const SETTINGS_KEY = 'st_phone';
@@ -295,6 +295,14 @@ export function getLauncherPosition() {
 
 export function saveLauncherPosition(position) {
     ensureGlobalSettings().launcherPosition = { x: position.x, y: position.y };
+    Promise.resolve(saveSettings()).catch((error) => console.warn('[ST-Phone] Failed to save settings', error));
+}
+
+// Back to pure-CSS default placement for both elements.
+export function resetPositions() {
+    const global = ensureGlobalSettings();
+    global.launcherPosition = null;
+    global.windowPosition = null;
     Promise.resolve(saveSettings()).catch((error) => console.warn('[ST-Phone] Failed to save settings', error));
 }
 
