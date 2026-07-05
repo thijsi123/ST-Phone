@@ -45,6 +45,7 @@ let dragState = null;
 let launcherDragState = null;
 let activeMenuMessageId = null;
 let activePickerMessageId = null;
+let loadedFileUiStateForChat = '';
 
 function nowId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -184,6 +185,35 @@ function ensureState() {
 
 function saveState() {
     saveMetadataDebounced();
+}
+
+async function loadFileUiState() {
+    const api = memoryApi();
+    if (!api?.isAvailable?.() || !api?.getUiState) return false;
+    const chatKey = api.getChatKey?.() || getCurrentChatId?.() || '';
+    if (!chatKey || loadedFileUiStateForChat === chatKey) return false;
+    const fileState = await api.getUiState();
+    loadedFileUiStateForChat = chatKey;
+    const launcherPosition = fileState?.launcherPosition;
+    if (Number.isFinite(launcherPosition?.x) && Number.isFinite(launcherPosition?.y)) {
+        ensureState().ui.launcherPosition = { x: launcherPosition.x, y: launcherPosition.y };
+        saveState();
+        return true;
+    }
+    return false;
+}
+
+function saveFileUiState(patch) {
+    const api = memoryApi();
+    if (!api?.isAvailable?.() || !api?.setUiState || !patch || typeof patch !== 'object') return;
+    api.setUiState(patch).catch((error) => console.warn('[ST-Phone] Failed to save file-backed UI state', error));
+}
+
+function saveLauncherPosition(position) {
+    if (!Number.isFinite(position?.x) || !Number.isFinite(position?.y)) return;
+    ensureState().ui.launcherPosition = { x: position.x, y: position.y };
+    saveState();
+    saveFileUiState({ launcherPosition: { x: position.x, y: position.y } });
 }
 
 function getUserName() {
@@ -1026,8 +1056,7 @@ function bindUi() {
         const rect = launcher.getBoundingClientRect();
         launcherDragState = { moved: wasMoved };
         launcher.classList.remove('st-phone-launcher-dragging');
-        ensureState().ui.launcherPosition = { x: rect.left, y: rect.top };
-        saveState();
+        saveLauncherPosition({ x: rect.left, y: rect.top });
         setTimeout(() => { launcherDragState = null; }, 0);
     });
     launcher.addEventListener('pointercancel', () => {
@@ -1555,11 +1584,10 @@ function applyLauncherPosition() {
     if (!Number.isFinite(bucket.ui.launcherPosition?.x) || !Number.isFinite(bucket.ui.launcherPosition?.y)) {
         if (window.matchMedia?.('(max-width: 640px)').matches) {
             const rect = launcher.getBoundingClientRect();
-            bucket.ui.launcherPosition = {
+            saveLauncherPosition({
                 x: Math.max(4, Math.round((window.innerWidth - Math.max(rect.width, 88)) / 2)),
                 y: Math.max(4, Math.round((window.innerHeight - Math.max(rect.height, 46)) / 2)),
-            };
-            saveState();
+            });
         } else {
             return;
         }
@@ -1571,8 +1599,7 @@ function applyLauncherPosition() {
     launcher.style.right = 'auto';
     launcher.style.bottom = 'auto';
     if (clamped.x !== bucket.ui.launcherPosition.x || clamped.y !== bucket.ui.launcherPosition.y) {
-        bucket.ui.launcherPosition = clamped;
-        saveState();
+        saveLauncherPosition(clamped);
     }
 }
 
@@ -1694,13 +1721,19 @@ function init() {
     window.addEventListener('resize', syncViewportPositions, { passive: true });
     window.addEventListener('orientationchange', syncViewportPositions, { passive: true });
     updateMemoryStatus();
-    eventSource.on('st_memory_status', updateMemoryStatus);
+    loadFileUiState().then((changed) => { if (changed) render(); });
+    eventSource.on('st_memory_status', () => {
+        updateMemoryStatus();
+        loadFileUiState().then((changed) => { if (changed) render(); });
+    });
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, handleRenderedMessage);
     eventSource.on(event_types.CHAT_CHANGED, () => {
+        loadedFileUiStateForChat = '';
         ensureState();
         setPrompt();
         render();
         updateMemoryStatus();
+        loadFileUiState().then((changed) => { if (changed) render(); });
     });
 }
 
