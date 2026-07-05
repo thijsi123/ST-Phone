@@ -656,10 +656,22 @@
 @media (max-width: 640px) {
     #st-phone-window {
         /* Fullscreen-ish overlay, always fully on-screen on small screens. */
-        inset: 8px !important;
-        width: auto;
-        height: auto;
+        top: max(8px, env(safe-area-inset-top)) !important;
+        right: max(8px, env(safe-area-inset-right)) !important;
+        bottom: max(8px, env(safe-area-inset-bottom)) !important;
+        left: max(8px, env(safe-area-inset-left)) !important;
+        width: calc(100vw - 16px) !important;
+        height: calc(100vh - 16px) !important;
+        height: calc(100dvh - 16px) !important;
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
         border-radius: 24px;
+    }
+
+    #st-phone-window .st-phone-screen {
+        flex: 1 1 auto;
+        height: 100%;
+        min-height: 0;
     }
 
     #st-phone-launcher {
