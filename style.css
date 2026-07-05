@@ -2,7 +2,9 @@
     position: fixed;
     right: 18px;
     bottom: 96px;
-    z-index: 2147483002;
+    /* Below the phone window (2147483001): when the phone is open it covers
+       the button instead of the button floating on top of the phone UI. */
+    z-index: 2147483000;
     min-width: 58px;
     height: 48px;
     display: grid;
